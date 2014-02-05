@@ -12,7 +12,6 @@ import java.util.Vector;
 
 import com.b6w7.eece411.ChatMessage;
 import com.b6w7.eece411.ClientInterface;
-import com.b6w7.eece411.HelloImpl;
 import com.b6w7.eece411.ServerInterface;
 
 public class ChatServer extends UnicastRemoteObject

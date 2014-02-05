@@ -6,7 +6,6 @@ import java.rmi.registry.Registry;
 
 import com.b6w7.eece411.ChatMessage;
 import com.b6w7.eece411.ClientInterface;
-import com.b6w7.eece411.HelloInterface;
 import com.b6w7.eece411.ServerInterface;
 import com.b6w7.eece411.Client.ChatClient;
 
