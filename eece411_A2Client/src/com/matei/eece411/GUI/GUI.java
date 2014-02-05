@@ -60,7 +60,7 @@ public class GUI extends JPanel implements ActionListener {
      * this method should be invoked from the
      * event-dispatching thread.
      */
-    protected static GUI createAndShowGUI(MessageQueue q) {
+    public static GUI createAndShowGUI(MessageQueue q) {
         
         if (gui != null) {
             return gui;
