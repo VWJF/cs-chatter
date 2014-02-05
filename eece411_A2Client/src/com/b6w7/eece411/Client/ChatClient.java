@@ -53,9 +53,7 @@ implements ClientInterface {
 	 */
 	@Override
 	public void replyToClientGUI(ChatMessage answer) throws RemoteException {
-		// TODO Auto-generated method stub
-		System.out.println("Received reply: " + answer.message() );
-		Main.gui.addToTextArea( answer.message() );
+		gui.addToTextArea( "boogie" );
 	}
 
 	public static GUI gui;
