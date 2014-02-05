@@ -5,6 +5,8 @@ package com.b6w7.eece411.Client;
 
 import com.matei.eece411.GUI.*;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -53,17 +55,70 @@ implements ClientInterface {
 	 */
 	@Override
 	public void replyToClientGUI(ChatMessage answer) throws RemoteException {
-		gui.addToTextArea( "boogie" );
+		gui.addToTextArea( answer.message() );
 	}
 
 	public static GUI gui;
 	static MessageQueue _queue;
 
+    // display usage syntax for running client with GUI
+	private static void printUsage() {
+		System.out.println("USAGE:\n"
+				+ "  java -cp"
+				+ " <file.jar>"
+				+ " " + ChatClient.class.getCanonicalName() 
+				+ " <registry URL>"  
+				+ " [<registry port>]");
+		System.out.println("EXAMPLE:\n"
+				+ "  java -cp"
+				+ " A2.jar"
+				+ " " + ChatClient.class.getCanonicalName() 
+				+ " localhost");
+	}
+
 	public static void main(String[] args) {
+		String registryAddress;
+		int registryPort;
+		
+		// If the command line arguments are missing, then nothing to do
+		if ( args.length < 1 || args.length > 2 ) {
+			printUsage();
+			return;
+		}
+
+		// validate registry information from command line parameters 
+		// validate host can be found and port is within range.
+		// use default registry port if unspecified port.
+		try {
+			registryAddress = args[0];
+			InetAddress.getByName(args[0]);
+			if (args.length == 1)
+				registryPort = Registry.REGISTRY_PORT;
+			else
+				registryPort = Integer.parseInt(args[1]);
+			if (registryPort < 1024 || registryPort > 65535)
+				throw new NumberFormatException();
+			
+		} catch (UnknownHostException e) {
+			System.out.println("Unknown host for registry.");
+			printUsage();
+			return;
+			
+		} catch (NumberFormatException e1) {
+			System.out.println("Registry port must be numerical digits between 1024 to 65535, inclusive.");
+			printUsage();
+			return;
+		}
+		
+		System.out.println ("HelloClient is starting.  "
+				+"Looking for registry at " + registryAddress + " on port " + registryPort);
+
+
 		ServerInterface server = null;
 		ClientInterface client = null;
 
 		try {
+			Registry registry = LocateRegistry.getRegistry(registryAddress, registryPort);
 			client = new ChatClient();
 		} catch (RemoteException e1) {
 			e1.printStackTrace();
