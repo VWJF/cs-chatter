@@ -30,7 +30,7 @@ public class Main {
             server = (ServerInterface) 
 					registry.lookup ("SHello");
 					//Naming.lookup ("//matei.ece.ubc.ca/SHello");
-			System.out.println ("ChatClient is ready.");
+			System.out.println ("Main.ChatClient is ready.");
 
 			/* ... Now remote calls on hello can be used ... */
 			//System.out.println (hello.say());

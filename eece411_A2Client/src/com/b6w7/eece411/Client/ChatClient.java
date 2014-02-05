@@ -41,7 +41,7 @@ implements ClientInterface {
 
 		//In order to create (semi-)unique user-names for several instances of the client. 
 		//Used for testing.
-		int userID =  (int) Math.random() * 100;
+		int userID =  (int) (Math.random() * 100);
 		this.username = Integer.toString( (int)userID );
 	}
 
@@ -184,10 +184,12 @@ implements ClientInterface {
 				// wait until the user enters a new chat message
 				s = _queue.dequeue();
 				if ( !server.isRegistered( client ) ){
-					server.register( client );
+					server.register( client, new ChatMessage(client.getUsername(), s) );
 					System.out.println("Client registered");
 				}
-				server.postMessage(new ChatMessage(client.getUsername(), s));
+				else{
+					server.postMessage(new ChatMessage(client.getUsername(), s));
+				}
 			}
 			catch (InterruptedException ie) {
 				break;

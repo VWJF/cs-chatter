@@ -6,5 +6,7 @@ target/
 
 # for eclipse users
 .classpath
-.project
+.class
 .settings/
+.DS_Store
+package-info.java
