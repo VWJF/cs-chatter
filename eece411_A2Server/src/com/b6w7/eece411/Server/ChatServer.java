@@ -136,7 +136,7 @@ public class ChatServer extends UnicastRemoteObject
 
 		//Add received chat message to the master message List. 
 		synchronized(messageList){
-			messageList.add(msg);
+			messageList.add(0, msg);  // add to front of list
 			System.out.println("Updating MessageList. MessageList Index:"+ (messageList.indexOf( msg )) +" Size: " + (messageList.size()));
 		}
 		sendMessage();
@@ -157,19 +157,33 @@ public class ChatServer extends UnicastRemoteObject
 					Entry<ClientInterface, ChatMessage> aClient = clientIterator.next();
 
 					System.out.println("Updating ChatMessage associated to a ClientInterface.");
+					
+					// the referenced message of the client has already been sent successfully,
+					// so find any messages proceeding it,
+					// send those messages in order to the client,
+					// and update the reference after each successful send.
+					// When all messages for a client have been sent, 
+					// iterate to the next client.
+					// If any message fails to send, the reference will remain intact 
+					// pointing to the last successfully sent message.
+					ChatMessage msg = aClient.getValue();
+					int index = messageList.indexOf( msg );
+					ClientInterface client = aClient.getKey();
 
 					try{
-						aClient.getKey().replyToClientGUI( aClient.getValue() );
-						aClient.setValue( messageList.get( messageList.indexOf( aClient.getValue() ) + 1 ));
+						while (index > 0) {
+							msg = messageList.get( --index );
+							client.replyToClientGUI( msg );
+							System.out.println("Replied to \"" + msg.message()+"\""); 
+							aClient.setValue( msg );
+						}
+						
 					} catch(RemoteException e){
+						System.out.println("Client not responsive.  Could not send message \"" + msg + "\" to client");
 						// message failed -- do nothing.  Proceed to next client.
-					} catch(IndexOutOfBoundsException ioof) {
-						System.out.println("IndexOutOfBoundsException:" + ioof.getLocalizedMessage() );
-						System.out.println(aClient.getKey().hashCode() + " has sent all messages.");						
-						System.out.println(aClient.getKey().toString() + " has sent all messages.");						
 					}
-					System.out.println("Replied to \"" + aClient.getValue().message()+"\" " + "with: " + "(Iterations of List: "+ ++i +") (Total clients "+ clientList.size() + ").");
-			}
+				}
+				System.out.println("(Total clients "+ clientList.size() + ").");
 			}
 			updateWatermark();
 			System.out.println("Messages in the List: " + messageList.size());
@@ -212,7 +226,7 @@ public class ChatServer extends UnicastRemoteObject
 		if( !isRegistered(client) ){
 
 			clientList.put(client, msg);
-			messageList.add(msg);			
+			messageList.add(0, msg);			
 			System.out.println("Registered client " + client.getUsername() +".");
 		}
 		else{

@@ -198,8 +198,12 @@ implements ClientInterface {
 			catch (InterruptedException ie) {
 				break;
 			}
-			catch (Exception e) {
-				System.out.println ("ServerInterface failed: " + e);
+			catch (RemoteException e) {
+				// TODO add asynchronous Runnable to update static reference to Remote object
+				// ServerInterface server;
+				
+				gui.addToTextArea("Server not responsive.  Could not send message \"" + s + "\" to server.");
+				System.out.println("Server not responsive.  Could not send message \"" + s + "\" to server.");
 				e.printStackTrace();
 			}
 
