@@ -37,8 +37,6 @@ implements ClientInterface {
 	 * 
 	 */
 	public ChatClient() throws RemoteException {
-		// TODO Auto-generated constructor stub
-
 		//In order to create (semi-)unique user-names for several instances of the client. 
 		//Used for testing.
 		int userID =  (int) (Math.random() * 100);

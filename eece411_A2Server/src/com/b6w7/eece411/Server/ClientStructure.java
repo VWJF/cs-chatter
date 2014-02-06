@@ -11,7 +11,6 @@ public class ClientStructure {
 	private ChatMessage msg;
 	
 	public ClientStructure(ClientInterface ci, ChatMessage cm) {
-		// TODO Auto-generated constructor stub
 		this.client = ci;
 		this.msg = cm;
 	}
