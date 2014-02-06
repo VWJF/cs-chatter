@@ -5,8 +5,9 @@
 target/
 
 # for eclipse users
+bin/
 .classpath
-.class
+*.class
 .settings/
 .DS_Store
 package-info.java

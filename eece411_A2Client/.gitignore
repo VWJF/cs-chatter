@@ -5,6 +5,7 @@
 target/
 
 # for eclipse users
+bin/
 .classpath
 .class
 .settings/
