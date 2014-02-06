@@ -133,24 +133,18 @@ public class ChatServer extends UnicastRemoteObject
 
 	@Override
 	public void postMessage(ChatMessage msg) throws RemoteException {
-		try{
-			System.out.println("Received: "+msg.message());
+		System.out.println("Received: "+msg.message());
 
-			//Add received chat message to the master message List. 
-			synchronized(messageList){
-				messageList.add(msg);
-				_tail = msg;
-				System.out.println("Updating MessageList. MessageList Index:"+ (messageList.indexOf( msg )) +" Size: " + (messageList.size()));
-			}
-			sendMessage(msg);
+		//Add received chat message to the master message List. 
+		synchronized(messageList){
+			messageList.add(msg);
+			_tail = msg;
+			System.out.println("Updating MessageList. MessageList Index:"+ (messageList.indexOf( msg )) +" Size: " + (messageList.size()));
 		}
-		catch(Exception e){
-			e.printStackTrace();
-		}
+		sendMessage();
 	}
 
-	public void sendMessage(ChatMessage msg) throws RemoteException {
-		try{
+	public void sendMessage() {
 			int i = 0;
 			/*
 			 * For every <ClientInterface, ChatMessage> Map entry, 
@@ -167,27 +161,22 @@ public class ChatServer extends UnicastRemoteObject
 					Entry<ClientInterface, ChatMessage> aClient = clientIterator.next();
 					//aClient.replyToClientGUI( msg );
 
+					System.out.println("Updating ChatMessage associated to a ClientInterface.");
+
 					try{
-						System.out.println("Updating ChatMessage associated to a ClientInterface.");
+						aClient.getKey().replyToClientGUI( aClient.getValue() );
 						aClient.setValue( messageList.get( messageList.indexOf( aClient.getValue() ) + 1 ));
-					}
-					catch(IndexOutOfBoundsException ioof)
-					{
+					} catch(RemoteException e){
+						// message failed -- do nothing.  Proceed to next client.
+					} catch(IndexOutOfBoundsException ioof) {
 						System.out.println("IndexOutOfBoundsException:" + ioof.getLocalizedMessage() );
-						System.out.println(aClient.getKey().getUsername() + " has sent all messages.");						
+						System.out.println(aClient.getKey().hashCode() + " has sent all messages.");						
+						System.out.println(aClient.getKey().toString() + " has sent all messages.");						
 					}
-
-					aClient.getKey().replyToClientGUI( aClient.getValue() );
 					System.out.println("Replied to \"" + aClient.getValue().message()+"\" " + "with: " + "(Iterations of List: "+ ++i +") (Total clients "+ clientList.size() + ").");
-
 				}
-				updateWatermark();
-
 			}
-		}
-		catch(Exception e){
-			e.printStackTrace();
-		}
+			updateWatermark();
 	}
 
 	@Override
@@ -204,10 +193,9 @@ public class ChatServer extends UnicastRemoteObject
 			System.out.println("Client already registered.");
 		}
 
-		sendMessage(msg);
+		sendMessage();
 
 		//updateWatermark();	
-
 	}
 
 	@Override
