@@ -143,7 +143,7 @@ public class ChatServer extends UnicastRemoteObject
 		sendMessage();
 	}
 
-	public void sendMessage() {
+	private void sendMessage() {
 			int i = 0;
 			/*
 			 * For every <ClientInterface, ChatMessage> Map entry, 
