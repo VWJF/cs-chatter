@@ -31,18 +31,12 @@ implements ClientInterface {
 	private static Object serverSemaphore = new Object();
 	private static Thread mainThread = null;
 	private static Thread connectThread = null;
-
-	// member variables
-	private String username = null;
+	private static String username = null;
 
 	/**
 	 * Constructor of a ChatClient 
 	 */
-	public ChatClient() throws RemoteException {
-		//In order to create (semi-)unique user-names for several instances of the client. 
-		//Used for testing.
-		int userID =  (int) (Math.random() * 100);
-		this.username = Integer.toString( (int)userID );
+	public ChatClient(String name) throws RemoteException {
 	}
 
 	// Resets the connection from the client to the server.
@@ -126,7 +120,8 @@ implements ClientInterface {
 	public void replyToClientGUI(ChatMessage answer) throws RemoteException {
 		if(gui == null)
 			System.err.println("Gui is null");
-		gui.addToTextArea( answer.message() );
+		else 
+			gui.addToTextArea( answer.message() );
 	}
 
     // display usage syntax for running client with GUI
@@ -178,6 +173,10 @@ implements ClientInterface {
 			return;
 		}
 		
+		int userID =  (int) (Math.random() * 100);
+		username = "user" + Integer.toString( (int)userID );
+		username = "user9";
+		
 		System.out.println ("HelloClient is starting.  "
 				+"Looking for registry at " + address + " on port " + port);
 
@@ -190,7 +189,7 @@ implements ClientInterface {
 		// instantiate the GUI - in a new thread
 		javax.swing.SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
-				gui = GUI.createAndShowGUI(_queue);  
+				gui = GUI.createAndShowGUI(_queue, username);  
 			}
 		});
 
@@ -212,7 +211,9 @@ implements ClientInterface {
 		ChatClient.registryPort = port;
 		
 		try {
-			client = new ChatClient();
+			//In order to create (semi-)unique user-names for several instances of the client. 
+			//Used for testing.
+			client = new ChatClient( username );
 			asyncConnectToServer();
 
 		} catch (RemoteException e1) {
