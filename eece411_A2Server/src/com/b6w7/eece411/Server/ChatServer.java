@@ -143,8 +143,7 @@ public class ChatServer extends UnicastRemoteObject
 		sendMessage();
 	}
 
-	private void sendMessage() {
-		try{
+	public void sendMessage() {
 			int i = 0;
 			/*
 			 * For every <ClientInterface, ChatMessage> Map entry, 
@@ -158,27 +157,24 @@ public class ChatServer extends UnicastRemoteObject
 				while( clientIterator.hasNext() ){
 					Entry<ClientInterface, ChatMessage> aClient = clientIterator.next();
 
-					try{
-						System.out.println("Updating ChatMessage associated to a ClientInterface.");
-						aClient.setValue( messageList.get( messageList.indexOf( aClient.getValue() ) + 1 ));
-					}
-					catch(IndexOutOfBoundsException ioof)
-					{
-						System.out.println("IndexOutOfBoundsException:" + ioof.getLocalizedMessage() );
-						System.out.println(aClient.getKey().getUsername() + " has sent all messages.");						
-					}
+					System.out.println("Updating ChatMessage associated to a ClientInterface.");
 
-					aClient.getKey().replyToClientGUI( aClient.getValue() );
+					try{
+						aClient.getKey().replyToClientGUI( aClient.getValue() );
+						aClient.setValue( messageList.get( messageList.indexOf( aClient.getValue() ) + 1 ));
+					} catch(RemoteException e){
+						// message failed -- do nothing.  Proceed to next client.
+					} catch(IndexOutOfBoundsException ioof) {
+						System.out.println("IndexOutOfBoundsException:" + ioof.getLocalizedMessage() );
+						System.out.println(aClient.getKey().hashCode() + " has sent all messages.");						
+						System.out.println(aClient.getKey().toString() + " has sent all messages.");						
+					}
 					System.out.println("Replied to \"" + aClient.getValue().message()+"\" " + "with: " + "(Iterations of List: "+ ++i +") (Total clients "+ clientList.size() + ").");
-				}
-				
-				updateWatermark();
 			}
-		}
-		catch(Exception e){
-			e.printStackTrace();
-		}
+			}
+			updateWatermark();
 	}
+
 
 	@Override
 	public void register(ClientInterface client, ChatMessage msg) throws RemoteException{
@@ -198,7 +194,6 @@ public class ChatServer extends UnicastRemoteObject
 		sendMessage();
 
 		//updateWatermark();	
-
 	}
 
 	@Override
