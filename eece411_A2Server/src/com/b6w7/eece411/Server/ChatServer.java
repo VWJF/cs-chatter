@@ -241,5 +241,8 @@ public class ChatServer extends UnicastRemoteObject
 	public boolean isRegistered(ClientInterface client) throws RemoteException{
 		//return clientList.contains(client);
 		return clientList.containsKey(client);
+
 	}
+
+
 }
