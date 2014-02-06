@@ -9,6 +9,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -90,11 +91,13 @@ public class ChatServer extends UnicastRemoteObject
 	
 	//private List<ClientStructure> clientList;
 	private Map<ClientInterface, ChatMessage> clientList;
+	private Set<ClientInterface> clientListStale;
 	
 	public ChatServer(String user) throws RemoteException{
 		this.messageList = Collections.synchronizedList(new LinkedList<ChatMessage>());
 		this.clientList = Collections.synchronizedMap(new ConcurrentHashMap<ClientInterface, ChatMessage>());
-		
+		this.clientListStale = Collections.synchronizedSet(new HashSet<ClientInterface>());
+
 		//messageList.add(new ChatMessage("","Welcome to ChatRoom"));
 		//_watermark = messageList.get(0);
 		
@@ -128,7 +131,23 @@ public class ChatServer extends UnicastRemoteObject
 			}
 		}
 	}
-
+/*
+ * TODO:
+ * The isStaleClients() should be executed every 10 seconds.
+ * Every execution will check for Stale clients and remove them as necessary.
+ * Untested.
+ */
+	public boolean isStaleClients(){
+		return clientListStale.isEmpty() ? true : removeStaleClients() ; 
+	}
+	
+	private boolean removeStaleClients(){
+		
+		return clientList.keySet().removeAll(clientListStale);
+	}
+	
+	
+	
 	@Override
 	public void postMessage(ChatMessage msg) throws RemoteException {
 
@@ -143,7 +162,6 @@ public class ChatServer extends UnicastRemoteObject
 	}
 
 	private void sendMessage() {
-			int i = 0;
 			/*
 			 * For every <ClientInterface, ChatMessage> Map entry, 
 			 * reply with the ChatMessage to the gui in the ClientInterface.
@@ -179,8 +197,11 @@ public class ChatServer extends UnicastRemoteObject
 						}
 						
 					} catch(RemoteException e){
-						System.out.println("Client not responsive.  Could not send message \"" + msg + "\" to client");
+						System.out.println("Client not responsive.  Could not send message \"" + msg.message() + "\" to client.");
 						// message failed -- do nothing.  Proceed to next client.
+						
+						clientListStale.add(client);
+						System.out.println("Non-reponsive clients \"" + clientListStale.size() + "\".");
 					}
 				}
 				System.out.println("(Total clients "+ clientList.size() + ").");
@@ -189,7 +210,7 @@ public class ChatServer extends UnicastRemoteObject
 			System.out.println("Messages in the List: " + messageList.size());
 	}
 
-
+	//TODO: To be removed
 	@Override
 	public void register(ClientInterface client, ChatMessage msg) throws RemoteException{
 		/*
