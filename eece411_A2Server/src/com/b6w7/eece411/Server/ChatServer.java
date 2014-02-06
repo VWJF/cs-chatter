@@ -224,9 +224,15 @@ public class ChatServer extends UnicastRemoteObject
 
 		if( !isRegistered(client) ){
 
+			// Send the welcome message to the newly-connected client
+			// and set the same welcome message as the client's 
 			clientList.put(client, msg);
 			messageList.add(0, msg);			
 			System.out.println("Registered client " + client.getUsername() +".");
+			
+			client.replyToClientGUI( msg );
+			System.out.println("Replied to \"" + msg.message()+"\""); 
+			
 		}
 		else{
 			System.out.println("Client already registered.");

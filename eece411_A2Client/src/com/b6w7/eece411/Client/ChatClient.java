@@ -26,8 +26,8 @@ implements ClientInterface {
 	private static Registry registry = null;
 	private static String registryAddress = null;
 	private static int registryPort = -1;
-	public static ClientInterface client = null;
-	public static ServerInterface server = null;
+	private static ClientInterface client = null;
+	private static ServerInterface server = null;
 	private static Object serverSemaphore = new Object();
 	private static Thread mainThread = null;
 	private static Thread connectThread = null;
@@ -43,8 +43,6 @@ implements ClientInterface {
 		//Used for testing.
 		int userID =  (int) (Math.random() * 100);
 		this.username = Integer.toString( (int)userID );
-		
-//		asyncConnectToServer();
 	}
 
 	// Resets the connection from the client to the server.
@@ -60,8 +58,6 @@ implements ClientInterface {
 		if (null != connectThread && connectThread.isAlive()) 
 			return;
 
-		server = null;
-		
 		// spawn a new thread
 		// this thread sits in a loop, trying to 
 		// (1) obtain a ref to the registry,
@@ -74,7 +70,7 @@ implements ClientInterface {
 
 			@Override
 			public void run() { 
-				while (null == server) {
+				do {
 					synchronized (ChatClient.serverSemaphore) {
 						try {
 							registry = LocateRegistry.getRegistry(
@@ -112,14 +108,12 @@ implements ClientInterface {
 					// if main thread has exited, then kill this thread
 					if (!mainThread.isAlive())
 						return;
-				}
+					
+				} while (null == server); 
 			}
 		});
 		
-//		if (connectThread== null)
-//			System.out.println("connectThread is null!");
-//		else 
-			connectThread.start();
+		connectThread.start();
 	}
 
 
@@ -219,35 +213,6 @@ implements ClientInterface {
 		
 		try {
 			client = new ChatClient();
-//			registry = LocateRegistry.getRegistry(
-//					ChatClient.registryAddress, 
-//					ChatClient.registryPort);
-//			UnicastRemoteObject.exportObject(client, 0);
-			
-//			UnicastRemoteObject.exportObject(new ClientInterface() {
-//						
-//				@Override
-//				public void replyToClientGUI(ChatMessage answer) throws RemoteException {
-//					// TODO Auto-generated method stub
-//					
-//				}
-//				
-//				@Override
-//				public String getUsername() throws RemoteException {
-//					// TODO Auto-generated method stub
-//					return null;
-//				}
-//			}, 0);
-			
-//			try {
-//				server = (ServerInterface) 
-//						registry.lookup ("SHello");
-//			} catch (NotBoundException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			}
-//			server.register( client );
-			
 			asyncConnectToServer();
 
 		} catch (RemoteException e1) {
@@ -262,10 +227,12 @@ implements ClientInterface {
 			try {
 				// wait until the user enters a new chat message
 				s = _queue.dequeue();
-				if (null != server) {
-					server.postMessage(new ChatMessage(client.getUsername(), s));
-				} else {
-					throw new RemoteException();
+				synchronized (ChatClient.serverSemaphore) {
+					if (null != server) {
+						server.postMessage(new ChatMessage(client.getUsername(), s));
+					} else {
+						throw new RemoteException();
+					}
 				}
 				
 			} catch (RemoteException e) {
