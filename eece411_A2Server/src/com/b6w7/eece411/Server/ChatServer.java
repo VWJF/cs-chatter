@@ -94,7 +94,6 @@ public class ChatServer extends UnicastRemoteObject
 	public ChatServer(String user) throws RemoteException{
 		this.user = user;
 		this.messageList = Collections.synchronizedList(new LinkedList<ChatMessage>());
-//		this.clientList = Collections.synchronizedList(new LinkedList<ClientStructure>());
 		this.clientList = Collections.synchronizedMap(new ConcurrentHashMap<ClientInterface, ChatMessage>());
 		
 		//messageList.add(new ChatMessage("","Connected!"));
@@ -115,7 +114,6 @@ public class ChatServer extends UnicastRemoteObject
 			System.out.println("Updating Watermark. Watermark Index:"+ (messageList.indexOf( _watermark )) +" Size: " + messageList.size());
 
 			try{
-
 				while( clientList.containsValue( _watermark ) )
 					if( !messageList.isEmpty() ){
 						_watermark = messageList.get( messageList.indexOf(_watermark) + 1 );
@@ -133,23 +131,19 @@ public class ChatServer extends UnicastRemoteObject
 
 	@Override
 	public void postMessage(ChatMessage msg) throws RemoteException {
-		try{
-			System.out.println("Received: "+msg.message());
 
-			//Add received chat message to the master message List. 
-			synchronized(messageList){
-				messageList.add(msg);
-				_tail = msg;
-				System.out.println("Updating MessageList. MessageList Index:"+ (messageList.indexOf( msg )) +" Size: " + (messageList.size()));
-			}
-			sendMessage(msg);
+		System.out.println("Received: "+msg.message());
+
+		//Add received chat message to the master message List. 
+		synchronized(messageList){
+			messageList.add(msg);
+			_tail = msg;
+			System.out.println("Updating MessageList. MessageList Index:"+ (messageList.indexOf( msg )) +" Size: " + (messageList.size()));
 		}
-		catch(Exception e){
-			e.printStackTrace();
-		}
+		sendMessage();
 	}
 
-	public void sendMessage(ChatMessage msg) throws RemoteException {
+	private void sendMessage() {
 		try{
 			int i = 0;
 			/*
@@ -159,13 +153,10 @@ public class ChatServer extends UnicastRemoteObject
 			 * with the next message from the message list. 
 			 */
 			synchronized(clientList){
-				//	Iterator<ClientStructure> clientIterator = clientList.iterator();
 				Iterator<Entry<ClientInterface, ChatMessage>> clientIterator = clientList.entrySet().iterator();
 
 				while( clientIterator.hasNext() ){
-					//ClientInterface aClient = clientIterator.next();
 					Entry<ClientInterface, ChatMessage> aClient = clientIterator.next();
-					//aClient.replyToClientGUI( msg );
 
 					try{
 						System.out.println("Updating ChatMessage associated to a ClientInterface.");
@@ -179,10 +170,9 @@ public class ChatServer extends UnicastRemoteObject
 
 					aClient.getKey().replyToClientGUI( aClient.getValue() );
 					System.out.println("Replied to \"" + aClient.getValue().message()+"\" " + "with: " + "(Iterations of List: "+ ++i +") (Total clients "+ clientList.size() + ").");
-
 				}
+				
 				updateWatermark();
-
 			}
 		}
 		catch(Exception e){
@@ -192,22 +182,50 @@ public class ChatServer extends UnicastRemoteObject
 
 	@Override
 	public void register(ClientInterface client, ChatMessage msg) throws RemoteException{
+		/*
+		 * Add the <ClientInterface, ChatMessage> pair to the ClientList & the ChatMessage to the "universal" messageList.
+		 */
+		
 		if( !isRegistered(client) ){
-			//clientList.add(client);
 			clientList.put(client, msg);
-
 			messageList.add(msg);
-			
 			System.out.println("Registered client " + client.getUsername() +".");
 		}
 		else{
 			System.out.println("Client already registered.");
 		}
 
-		sendMessage(msg);
+		sendMessage();
 
 		//updateWatermark();	
 
+	}
+
+	@Override
+	public void register(ClientInterface client) throws RemoteException{
+	
+		/*
+		 * Add the <ClientInterface, ChatMessage> pair to the ClientList 
+		 * where the ChatMessage is first message that will be associated with the Client,
+		 * this ChatMessage is a generic message to announce the Clients precense in the Chat Room. 
+		 * & the ChatMessage to the "universal" messageList.
+		 */
+		
+		ChatMessage msg = new ChatMessage("moderator", "Welcome to the Chatroom " + client.getUsername() + "!");
+
+		if( !isRegistered(client) ){
+
+			clientList.put(client, msg);
+			messageList.add(msg);			
+			System.out.println("Registered client " + client.getUsername() +".");
+		}
+		else{
+			System.out.println("Client already registered.");
+		}
+
+		sendMessage();
+
+		//updateWatermark();	
 	}
 
 	@Override

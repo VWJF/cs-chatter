@@ -55,6 +55,9 @@ implements ClientInterface {
 	 */
 	@Override
 	public void replyToClientGUI(ChatMessage answer) throws RemoteException {
+		if(gui == null)
+			System.out.println("Gui is null");
+		System.out.println("Gui is not null");
 		gui.addToTextArea( answer.message() );
 	}
 
@@ -117,28 +120,6 @@ implements ClientInterface {
 		ServerInterface server = null;
 		ClientInterface client = null;
 
-		try {
-			Registry registry = LocateRegistry.getRegistry(registryAddress, registryPort);
-			client = new ChatClient();
-		} catch (RemoteException e1) {
-			e1.printStackTrace();
-		}
-
-		try {
-			Registry registry = LocateRegistry.getRegistry();
-
-			server = (ServerInterface) 
-					registry.lookup ("SHello");
-			//Naming.lookup ("//matei.ece.ubc.ca/SHello");
-			System.out.println ("ChatClient is ready.");
-
-			/* ... Now remote calls on hello can be used ... */
-			//System.out.println (hello.say());
-		} 
-		catch (Exception e) {
-			System.out.println ("ServerInterface failed: " + e);
-		}
-
 
 		// create a shared buffer where the GUI add the messages thet need to 
 		// be sent out by the main thread.  The main thread stays in a loop 
@@ -177,19 +158,42 @@ implements ClientInterface {
 		//   * implement the callback object which is called by the server remotely 
 		//     and, in turn, updates the local GUI
 
+		try {
+			Registry registry = LocateRegistry.getRegistry(registryAddress, registryPort);
+			client = new ChatClient();
+		} catch (RemoteException e1) {
+			e1.printStackTrace();
+		}
+
+		try {
+			Registry registry = LocateRegistry.getRegistry();
+
+			server = (ServerInterface) 
+					registry.lookup ("SHello");
+			//Naming.lookup ("//matei.ece.ubc.ca/SHello");
+			System.out.println ("ChatClient is ready.");
+
+			server.register( client );
+			System.out.println("Client registered");	
+		} 
+		catch (Exception e) {
+			System.out.println ("ServerInterface failed: " + e);
+		}
+
+
 
 		while (true) {
 			String s = null;
 			try {
 				// wait until the user enters a new chat message
 				s = _queue.dequeue();
-				if ( !server.isRegistered( client ) ){
+				/*if ( !server.isRegistered( client ) ){
 					server.register( client, new ChatMessage(client.getUsername(), s) );
 					System.out.println("Client registered");
 				}
-				else{
+				else{ */
 					server.postMessage(new ChatMessage(client.getUsername(), s));
-				}
+					//}
 			}
 			catch (InterruptedException ie) {
 				break;
