@@ -86,17 +86,17 @@ public class ChatServer extends UnicastRemoteObject
 	}
 
 	private List<ChatMessage> messageList;
-	private ChatMessage _head, _tail, _watermark;
-	private String user;
+	private ChatMessage _watermark;
+	
 	//private List<ClientStructure> clientList;
 	private Map<ClientInterface, ChatMessage> clientList;
 	
 	public ChatServer(String user) throws RemoteException{
-		this.user = user;
 		this.messageList = Collections.synchronizedList(new LinkedList<ChatMessage>());
 		this.clientList = Collections.synchronizedMap(new ConcurrentHashMap<ClientInterface, ChatMessage>());
 		
-		//messageList.add(new ChatMessage("","Connected!"));
+		//messageList.add(new ChatMessage("","Welcome to ChatRoom"));
+		//_watermark = messageList.get(0);
 		
 		//updateWatermark();
 	}
@@ -106,7 +106,7 @@ public class ChatServer extends UnicastRemoteObject
 		if(_watermark == null) {
 			synchronized(messageList){
 				//messageList synchronized to make concurrently safe.
-				_head = _tail = _watermark = messageList.get(0);
+				_watermark = messageList.get(0);
 			}
 		}
 
@@ -137,7 +137,6 @@ public class ChatServer extends UnicastRemoteObject
 		//Add received chat message to the master message List. 
 		synchronized(messageList){
 			messageList.add(msg);
-			_tail = msg;
 			System.out.println("Updating MessageList. MessageList Index:"+ (messageList.indexOf( msg )) +" Size: " + (messageList.size()));
 		}
 		sendMessage();
@@ -173,6 +172,7 @@ public class ChatServer extends UnicastRemoteObject
 			}
 			}
 			updateWatermark();
+			System.out.println("Messages in the List: " + messageList.size());
 	}
 
 
@@ -184,6 +184,7 @@ public class ChatServer extends UnicastRemoteObject
 		
 		if( !isRegistered(client) ){
 			clientList.put(client, msg);
+			
 			messageList.add(msg);
 			System.out.println("Registered client " + client.getUsername() +".");
 		}
