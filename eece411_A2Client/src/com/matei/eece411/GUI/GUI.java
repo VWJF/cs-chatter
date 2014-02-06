@@ -2,12 +2,20 @@ package com.matei.eece411.GUI;
 
 /* TextDemo.java requires no other files. */
 
-import java.awt.*;
-import java.awt.event.*;
-import javax.swing.*;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
 
 public class GUI extends JPanel implements ActionListener {
-    protected JTextField textField;
+	private static final long serialVersionUID = -7641232122265931101L;
+	protected JTextField textField;
     protected JTextArea textArea;
     private final static String newline = "\n";
 

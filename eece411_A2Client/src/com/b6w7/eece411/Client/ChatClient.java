@@ -1,68 +1,139 @@
-/**
- * 
- */
 package com.b6w7.eece411.Client;
-
-import com.matei.eece411.GUI.*;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.Random;
 
 import com.b6w7.eece411.ChatMessage;
 import com.b6w7.eece411.ClientInterface;
 import com.b6w7.eece411.ServerInterface;
+import com.matei.eece411.GUI.GUI;
+import com.matei.eece411.GUI.MessageQueue;
 
 /**
- * @author 
- *
+ * Client that connects to {@link ChatServer}
  */
-public class ChatClient extends UnicastRemoteObject
+public class ChatClient
 implements ClientInterface {
+	// static variables
+	private static final long DELAY_TO_RECONNECT_MS = 1000;
+	private static GUI gui = null;
+	private static MessageQueue _queue = null;
+	private static Registry registry = null;
+	private static String registryAddress = null;
+	private static int registryPort = -1;
+	public static ClientInterface client = null;
+	public static ServerInterface server = null;
+	private static Object serverSemaphore = new Object();
+	private static Thread mainThread = null;
+	private static Thread connectThread = null;
+
+	// member variables
+	private String username = null;
 
 	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 1L;
-
-	private static int userCounter = 0;
-
-	private String username;
-
-	/**
-	 * 
+	 * Constructor of a ChatClient 
 	 */
 	public ChatClient() throws RemoteException {
-		// TODO Auto-generated constructor stub
-
 		//In order to create (semi-)unique user-names for several instances of the client. 
 		//Used for testing.
 		int userID =  (int) (Math.random() * 100);
 		this.username = Integer.toString( (int)userID );
+		
+//		asyncConnectToServer();
 	}
 
+	// Resets the connection from the client to the server.
+	// Spawns a thread which continually attempts to connect the client with the server.
+	// The thread will keep retrying at 1s intervals until the connection
+	// is established.  Until that time, server is set to null.
+	// If this reconnection thread is already running, then this method does nothing,
+	// as the thread has already been spawned and is currently running.
+	private static void asyncConnectToServer(){
+		
+		// If thread is alive then we are already trying to connect.
+		// nothing to do here.
+		if (null != connectThread && connectThread.isAlive()) 
+			return;
+
+		server = null;
+		
+		// spawn a new thread
+		// this thread sits in a loop, trying to 
+		// (1) obtain a ref to the registry,
+		// (2) export the chat client to the registry
+		// (3) obtain a remote ref to the server, and
+		// (4) register client with server.
+		// This thread synchronizes on the chat client object,
+		// and sleeps 1s between retries
+		connectThread = new Thread(new Runnable() {
+
+			@Override
+			public void run() { 
+				while (null == server) {
+					synchronized (ChatClient.serverSemaphore) {
+						try {
+							registry = LocateRegistry.getRegistry(
+									ChatClient.registryAddress, 
+									ChatClient.registryPort);
+							UnicastRemoteObject.exportObject(client, 0);
+							server = (ServerInterface) 
+									registry.lookup ("SHello");
+							server.register( client );
+
+							gui.addToTextArea("HelloClient successfully connected with server.");
+							System.out.println("HelloClient successfully connected with server.");	
+							// All 4 of the above succeeded, so we are done.
+							return;
+							
+						} catch (RemoteException | NotBoundException e) {
+							e.printStackTrace();
+							gui.addToTextArea("HelloClient failed to connect with server."
+									+"\nRetrying in " + (DELAY_TO_RECONNECT_MS/1000) + " seconds...");
+							System.out.println("HelloClient failed to connect with server."
+									+"\nRetrying in " + (DELAY_TO_RECONNECT_MS/1000) + " seconds...");
+							// At least one of the above 4 failed,
+							// set server to null, so that elsewhere
+							// in the code we know that server ref is stale
+							server = null;
+						}
+					}
+
+					try {
+						Thread.sleep(DELAY_TO_RECONNECT_MS);
+					} catch (InterruptedException e) {
+						// do nothing.  Spurious interrupt signals can occur.
+					}
+					
+					// if main thread has exited, then kill this thread
+					if (!mainThread.isAlive())
+						return;
+				}
+			}
+		});
+		
+//		if (connectThread== null)
+//			System.out.println("connectThread is null!");
+//		else 
+			connectThread.start();
+	}
+
+
+	@Override
 	public String getUsername() throws RemoteException{
 		return username;
 	}
 
-
-	/* (non-Javadoc)
-	 * @see com.b6w7.eece411.ClientInterface#replyToClientGUI()
-	 */
 	@Override
 	public void replyToClientGUI(ChatMessage answer) throws RemoteException {
 		if(gui == null)
-			System.out.println("Gui is null");
-		System.out.println("Gui is not null");
+			System.err.println("Gui is null");
 		gui.addToTextArea( answer.message() );
 	}
-
-	public static GUI gui;
-	static MessageQueue _queue;
 
     // display usage syntax for running client with GUI
 	private static void printUsage() {
@@ -80,8 +151,8 @@ implements ClientInterface {
 	}
 
 	public static void main(String[] args) {
-		String registryAddress;
-		int registryPort;
+		String address;
+		int port;
 		
 		// If the command line arguments are missing, then nothing to do
 		if ( args.length < 1 || args.length > 2 ) {
@@ -93,13 +164,13 @@ implements ClientInterface {
 		// validate host can be found and port is within range.
 		// use default registry port if unspecified port.
 		try {
-			registryAddress = args[0];
+			address = args[0];
 			InetAddress.getByName(args[0]);
 			if (args.length == 1)
-				registryPort = Registry.REGISTRY_PORT;
+				port = Registry.REGISTRY_PORT;
 			else
-				registryPort = Integer.parseInt(args[1]);
-			if (registryPort < 1024 || registryPort > 65535)
+				port = Integer.parseInt(args[1]);
+			if (port < 1024 || port > 65535)
 				throw new NumberFormatException();
 			
 		} catch (UnknownHostException e) {
@@ -114,14 +185,9 @@ implements ClientInterface {
 		}
 		
 		System.out.println ("HelloClient is starting.  "
-				+"Looking for registry at " + registryAddress + " on port " + registryPort);
+				+"Looking for registry at " + address + " on port " + port);
 
-
-		ServerInterface server = null;
-		ClientInterface client = null;
-
-
-		// create a shared buffer where the GUI add the messages thet need to 
+		// create a shared buffer where the GUI add the messages that need to 
 		// be sent out by the main thread.  The main thread stays in a loop 
 		// and when a new message shows up in the buffer it sends it out 
 		// to the chat server (using RMI)
@@ -134,85 +200,86 @@ implements ClientInterface {
 			}
 		});
 
-
-		// hack make sure the GUI instantioation is completed by the GUI thread 
+		// hack make sure the GUI instantiation is completed by the GUI thread 
 		// before the next call
 		while (gui == null)
-			Thread.currentThread().yield();
+			Thread.yield();
 
 		// calling the GUI method that updates the text area of the GUI
-		// NOTE: you might want to call the same method when a new chat message 
-		//       arrives
-		gui.addToTextArea("RemoteUser:> Sample of displaying remote maessage");
+		gui.addToTextArea("HelloClient is starting.  "
+				+"Looking for registry at " + address + " on port " + port);
 
+		// store a reference to the main thread so that
+		// other threads can poll this reference to see
+		// if main thread is still running
+		mainThread = Thread.currentThread();
 
-		// The code below serves as an example to show how the shares message 
-		// between the GUI and the main thread.
-		// You will probably want to replace the code below with code that sits in a loop,  
-		// waits for new messages to be entered by the user, and sends them to the 
-		// chat server (using an RMI call)
-		// 
-		// In addition you may want to add code that
-		//   * connects to the chat server and provides an object for callbacks (so 
-		//     that the server has a way to send messages generated by other users)
-		//   * implement the callback object which is called by the server remotely 
-		//     and, in turn, updates the local GUI
-
+		ChatClient.registryAddress = address;
+		ChatClient.registryPort = port;
+		
 		try {
-			Registry registry = LocateRegistry.getRegistry(registryAddress, registryPort);
 			client = new ChatClient();
+//			registry = LocateRegistry.getRegistry(
+//					ChatClient.registryAddress, 
+//					ChatClient.registryPort);
+//			UnicastRemoteObject.exportObject(client, 0);
+			
+//			UnicastRemoteObject.exportObject(new ClientInterface() {
+//						
+//				@Override
+//				public void replyToClientGUI(ChatMessage answer) throws RemoteException {
+//					// TODO Auto-generated method stub
+//					
+//				}
+//				
+//				@Override
+//				public String getUsername() throws RemoteException {
+//					// TODO Auto-generated method stub
+//					return null;
+//				}
+//			}, 0);
+			
+//			try {
+//				server = (ServerInterface) 
+//						registry.lookup ("SHello");
+//			} catch (NotBoundException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
+//			server.register( client );
+			
+			asyncConnectToServer();
+
 		} catch (RemoteException e1) {
+			// Not expected, close application
 			e1.printStackTrace();
+			System.err.println("Unexpected RemoteException.  Closing.");
+			return;
 		}
-
-		try {
-			Registry registry = LocateRegistry.getRegistry();
-
-			server = (ServerInterface) 
-					registry.lookup ("SHello");
-			//Naming.lookup ("//matei.ece.ubc.ca/SHello");
-			System.out.println ("ChatClient is ready.");
-
-			server.register( client );
-			System.out.println("Client registered");	
-		} 
-		catch (Exception e) {
-			System.out.println ("ServerInterface failed: " + e);
-		}
-
-
 
 		while (true) {
 			String s = null;
 			try {
 				// wait until the user enters a new chat message
 				s = _queue.dequeue();
-				/*if ( !server.isRegistered( client ) ){
-					server.register( client, new ChatMessage(client.getUsername(), s) );
-					System.out.println("Client registered");
-				}
-				else{ */
+				if (null != server) {
 					server.postMessage(new ChatMessage(client.getUsername(), s));
-					//}
-			}
-			catch (InterruptedException ie) {
+				} else {
+					throw new RemoteException();
+				}
+				
+			} catch (RemoteException e) {
+				gui.addToTextArea("Server not responsive.  Message \"" + s + "\" dropped.");
+				System.out.println("Server not responsive.  Message \"" + s + "\" dropped.");
+				
+				asyncConnectToServer();
+
+			} catch (InterruptedException ie) {
 				break;
 			}
-			catch (RemoteException e) {
-				// TODO add asynchronous Runnable to update static reference to Remote object
-				// ServerInterface server;
-				
-				gui.addToTextArea("Server not responsive.  Could not send message \"" + s + "\" to server.");
-				System.out.println("Server not responsive.  Could not send message \"" + s + "\" to server.");
-				e.printStackTrace();
-			}
-
-			// update the GUI with the message entered by the user
-			// gui.addToTextArea("Me:> " + s); 
 
 			// print it to System.out (or send it to the RMI server)
 			System.out.println ("User entered: " + s + " -- now sending it to chat server");
-		} // end while loop
+		}
 	}
-
 }

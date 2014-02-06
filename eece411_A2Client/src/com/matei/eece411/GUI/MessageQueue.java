@@ -6,11 +6,11 @@ import java.util.LinkedList;
 public class MessageQueue {
 
     /* the actual queue */
-    private LinkedList  _queue ;
+    private LinkedList<String>  _queue ;
     
     /* the constructor - it simply creates the LinkedList where the queue elements are stored */
     public MessageQueue() {
-        _queue = new LinkedList();
+        _queue = new LinkedList<String>();
     }
     
     /* gets the first element of the queue or blocks if the queue is empty */
