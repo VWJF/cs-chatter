@@ -65,7 +65,7 @@ implements ClientInterface {
 		// spawn a new thread
 		// this thread sits in a loop, trying to 
 		// (1) obtain a ref to the registry,
-		// (2) export the chat client to the registry
+		// (2) register the chat client in the server.
 		// (3) obtain a remote ref to the server, and
 		// (4) register client with server.
 		// This thread synchronizes on the chat client object,
@@ -90,7 +90,18 @@ implements ClientInterface {
 							// All 4 of the above succeeded, so we are done.
 							return;
 							
-						} catch (RemoteException | NotBoundException e) {
+						//} catch (RemoteException | NotBoundException e) {
+						} catch (RemoteException  e) {	
+							e.printStackTrace();
+							gui.addToTextArea("HelloClient failed to connect with server."
+									+"\nRetrying in " + (DELAY_TO_RECONNECT_MS/1000) + " seconds...");
+							System.out.println("HelloClient failed to connect with server."
+									+"\nRetrying in " + (DELAY_TO_RECONNECT_MS/1000) + " seconds...");
+							// At least one of the above 4 failed,
+							// set server to null, so that elsewhere
+							// in the code we know that server ref is stale
+							server = null;
+						} catch (NotBoundException e) {
 							e.printStackTrace();
 							gui.addToTextArea("HelloClient failed to connect with server."
 									+"\nRetrying in " + (DELAY_TO_RECONNECT_MS/1000) + " seconds...");
@@ -101,6 +112,7 @@ implements ClientInterface {
 							// in the code we know that server ref is stale
 							server = null;
 						}
+						
 					}
 
 					try {
@@ -116,9 +128,6 @@ implements ClientInterface {
 			}
 		});
 		
-//		if (connectThread== null)
-//			System.out.println("connectThread is null!");
-//		else 
 			connectThread.start();
 	}
 
@@ -218,36 +227,7 @@ implements ClientInterface {
 		ChatClient.registryPort = port;
 		
 		try {
-			client = new ChatClient();
-//			registry = LocateRegistry.getRegistry(
-//					ChatClient.registryAddress, 
-//					ChatClient.registryPort);
-//			UnicastRemoteObject.exportObject(client, 0);
-			
-//			UnicastRemoteObject.exportObject(new ClientInterface() {
-//						
-//				@Override
-//				public void replyToClientGUI(ChatMessage answer) throws RemoteException {
-//					// TODO Auto-generated method stub
-//					
-//				}
-//				
-//				@Override
-//				public String getUsername() throws RemoteException {
-//					// TODO Auto-generated method stub
-//					return null;
-//				}
-//			}, 0);
-			
-//			try {
-//				server = (ServerInterface) 
-//						registry.lookup ("SHello");
-//			} catch (NotBoundException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			}
-//			server.register( client );
-			
+			client = new ChatClient();			
 			asyncConnectToServer();
 
 		} catch (RemoteException e1) {
@@ -265,12 +245,15 @@ implements ClientInterface {
 				if (null != server) {
 					server.postMessage(new ChatMessage(client.getUsername(), s));
 				} else {
-					throw new RemoteException();
+					//handle to server is lost.
+					throw new RemoteException("No connection to server present.");
 				}
 				
 			} catch (RemoteException e) {
+				
 				gui.addToTextArea("Server not responsive.  Message \"" + s + "\" dropped.");
-				System.out.println("Server not responsive.  Message \"" + s + "\" dropped.");
+				System.out.println("Server not responsive.  Message \"" + s + "\" dropped. : ");
+				System.out.println(e.getLocalizedMessage());
 				
 				asyncConnectToServer();
 
