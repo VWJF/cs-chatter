@@ -55,7 +55,7 @@ implements ClientInterface {
 		// spawn a new thread
 		// this thread sits in a loop, trying to 
 		// (1) obtain a ref to the registry,
-		// (2) register the chat client in the server.
+		// (2) export the chat client to the registry
 		// (3) obtain a remote ref to the server, and
 		// (4) register client with server.
 		// This thread synchronizes on the chat client object,
@@ -80,8 +80,7 @@ implements ClientInterface {
 							// All 4 of the above succeeded, so we are done.
 							return;
 							
-						//} catch (RemoteException | NotBoundException e) {
-						} catch (RemoteException  e) {	
+						} catch (RemoteException e) {
 							e.printStackTrace();
 							gui.addToTextArea("HelloClient failed to connect with server."
 									+"\nRetrying in " + (DELAY_TO_RECONNECT_MS/1000) + " seconds...");
@@ -91,8 +90,8 @@ implements ClientInterface {
 							// set server to null, so that elsewhere
 							// in the code we know that server ref is stale
 							server = null;
-						} catch (NotBoundException e) {
-							e.printStackTrace();
+						} catch ( NotBoundException nbe) {
+							nbe.printStackTrace();
 							gui.addToTextArea("HelloClient failed to connect with server."
 									+"\nRetrying in " + (DELAY_TO_RECONNECT_MS/1000) + " seconds...");
 							System.out.println("HelloClient failed to connect with server."
@@ -102,7 +101,6 @@ implements ClientInterface {
 							// in the code we know that server ref is stale
 							server = null;
 						}
-						
 					}
 
 					try {
@@ -119,11 +117,7 @@ implements ClientInterface {
 			}
 		});
 		
-<<<<<<< HEAD
 		connectThread.start();
-=======
-			connectThread.start();
->>>>>>> 2a35f3766ed94b6581a5e8cca7277e43a2daab7a
 	}
 
 
@@ -191,7 +185,6 @@ implements ClientInterface {
 		
 		int userID =  (int) (Math.random() * 100);
 		username = "user" + Integer.toString( (int)userID );
-		username = "user9";
 		
 		System.out.println ("HelloClient is starting.  "
 				+"Looking for registry at " + address + " on port " + port);
@@ -227,13 +220,9 @@ implements ClientInterface {
 		ChatClient.registryPort = port;
 		
 		try {
-<<<<<<< HEAD
 			//In order to create (semi-)unique user-names for several instances of the client. 
 			//Used for testing.
 			client = new ChatClient( username );
-=======
-			client = new ChatClient();			
->>>>>>> 2a35f3766ed94b6581a5e8cca7277e43a2daab7a
 			asyncConnectToServer();
 
 		} catch (RemoteException e1) {
@@ -248,27 +237,17 @@ implements ClientInterface {
 			try {
 				// wait until the user enters a new chat message
 				s = _queue.dequeue();
-<<<<<<< HEAD
 				synchronized (ChatClient.serverSemaphore) {
 					if (null != server) {
 						server.postMessage(new ChatMessage(client.getUsername(), s));
 					} else {
 						throw new RemoteException();
 					}
-=======
-				if (null != server) {
-					server.postMessage(new ChatMessage(client.getUsername(), s));
-				} else {
-					//handle to server is lost.
-					throw new RemoteException("No connection to server present.");
->>>>>>> 2a35f3766ed94b6581a5e8cca7277e43a2daab7a
 				}
 				
 			} catch (RemoteException e) {
-				
 				gui.addToTextArea("Server not responsive.  Message \"" + s + "\" dropped.");
-				System.out.println("Server not responsive.  Message \"" + s + "\" dropped. : ");
-				System.out.println(e.getLocalizedMessage());
+				System.out.println("Server not responsive.  Message \"" + s + "\" dropped.");
 				
 				asyncConnectToServer();
 
