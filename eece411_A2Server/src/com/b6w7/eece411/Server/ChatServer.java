@@ -100,9 +100,7 @@ public class ChatServer extends UnicastRemoteObject
 		clientListStale = Collections.synchronizedSet(new HashSet<ClientInterface>());
 		 
 		removeStaleClients();
-		//messageList.add(new ChatMessage("","Welcome to ChatRoom"));
-		//_watermark = messageList.get(0);
-		// TEST COMMENT
+
 	}
 
 	public boolean hasStaleClients(){
@@ -213,7 +211,7 @@ public class ChatServer extends UnicastRemoteObject
 					}
 				}
 			}
-			//updateWatermark();
+
 			System.out.println("Messages in the List: " + messageList.size());
 	}
 
@@ -249,8 +247,6 @@ public class ChatServer extends UnicastRemoteObject
 		}
 
 		sendMessage();
-
-		//updateWatermark();	
 	}
 
 	@Override
