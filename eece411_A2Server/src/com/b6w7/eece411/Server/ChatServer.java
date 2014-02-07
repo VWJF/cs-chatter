@@ -8,6 +8,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.Collections;
+import java.util.ConcurrentModificationException;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -86,64 +87,65 @@ public class ChatServer extends UnicastRemoteObject
 		}
 	}
 
-	private List<ChatMessage> messageList;
-	private ChatMessage _watermark;
+	private static List<ChatMessage> messageList;
 	
 	//private List<ClientStructure> clientList;
-	private Map<ClientInterface, ChatMessage> clientList;
-	private Set<ClientInterface> clientListStale;
+	private static Map<ClientInterface, ChatMessage> clientList;
+	private static Set<ClientInterface> clientListStale;
+	private Thread _ChatServerThread;
 	
 	public ChatServer(String user) throws RemoteException{
-		this.messageList = Collections.synchronizedList(new LinkedList<ChatMessage>());
-		this.clientList = Collections.synchronizedMap(new ConcurrentHashMap<ClientInterface, ChatMessage>());
-		this.clientListStale = Collections.synchronizedSet(new HashSet<ClientInterface>());
-
+		messageList = Collections.synchronizedList(new LinkedList<ChatMessage>());
+		clientList = Collections.synchronizedMap(new ConcurrentHashMap<ClientInterface, ChatMessage>());
+		clientListStale = Collections.synchronizedSet(new HashSet<ClientInterface>());
+		
+		_ChatServerThread = Thread.currentThread(); 
+		removeStaleClients();
 		//messageList.add(new ChatMessage("","Welcome to ChatRoom"));
 		//_watermark = messageList.get(0);
-		
-		//updateWatermark();
+	}
+
+	public boolean hasStaleClients(){
+		//list is empty = there are no stale clients present
+		//list is not empty = stale clients present
+		return !clientListStale.isEmpty();		
 	}
 	
-	private void updateWatermark(){
-		
-		if(_watermark == null) {
-			synchronized(messageList){
-				//messageList synchronized to make concurrently safe.
-				_watermark = messageList.get(0);
-			}
-		}
+	private void removeStaleClients(){
+		Thread removal = new Thread(new Runnable() {
 
-		synchronized(messageList){		
-			System.out.println("Updating Watermark. Watermark Index:"+ (messageList.indexOf( _watermark )) +" Size: " + messageList.size());
-
-			try{
-				while( clientList.containsValue( _watermark ) )
-					if( !messageList.isEmpty() ){
-						_watermark = messageList.get( messageList.indexOf(_watermark) + 1 );
-						System.out.println("Updated Watermark when messageList empty. Watermark Index:"+ (messageList.indexOf( _watermark )) +" Size: " + messageList.size());
+			@Override
+			public void run() { 
+				System.out.println("Stale Client Removal Thread started.");
+				while(_ChatServerThread.isAlive()){
+					try {
+						//5 second sleep (1*1000millisec)
+						Thread.sleep(5*1000);
+						
+					} catch (InterruptedException e) {
+						System.out.println(e.getLocalizedMessage());
+						e.printStackTrace();
 					}
+					
+					synchronized(clientList){
+						synchronized(clientListStale){
+							if(!clientListStale.isEmpty()){
+								int clientListSIZE = clientList.keySet().size();
+								if( ChatServer.clientList.keySet().removeAll(ChatServer.clientListStale) ){
+									ChatServer.clientListStale.clear();
+									int newSIZE = clientListSIZE - clientList.keySet().size();
+									System.out.println("Removed non-responsive clients: " + newSIZE );
+								}
+								else
+									System.out.println("Non-responsive clients not removed.");
+							}
+						}
+					}
+				}
 			}
-			catch(IndexOutOfBoundsException ioof)
-			{
-				System.out.println("IndexOutOfBoundsException: Watermark Index : "+ (messageList.indexOf( _watermark ) +1) +" Size: " + messageList.size());
-				System.out.println(ioof.getLocalizedMessage());
-				_watermark = messageList.get( messageList.size()-1 );
-			}
-		}
-	}
-/*
- * TODO:
- * The isStaleClients() should be executed every 10 seconds.
- * Every execution will check for Stale clients and remove them as necessary.
- * Untested.
- */
-	public boolean isStaleClients(){
-		return clientListStale.isEmpty() ? true : removeStaleClients() ; 
-	}
-	
-	private boolean removeStaleClients(){
+		});
 		
-		return clientList.keySet().removeAll(clientListStale);
+		removal.start();	
 	}
 	
 	
@@ -169,44 +171,57 @@ public class ChatServer extends UnicastRemoteObject
 			 * with the next message from the message list. 
 			 */
 			synchronized(clientList){
-				Iterator<Entry<ClientInterface, ChatMessage>> clientIterator = clientList.entrySet().iterator();
+				synchronized(messageList){
+					synchronized(clientListStale){
+						Iterator<Entry<ClientInterface, ChatMessage>> clientIterator = clientList.entrySet().iterator();
+						try{
+							while( clientIterator.hasNext() ){
+								Entry<ClientInterface, ChatMessage> aClient = clientIterator.next();
 
-				while( clientIterator.hasNext() ){
-					Entry<ClientInterface, ChatMessage> aClient = clientIterator.next();
+								System.out.println("Updating ChatMessage associated to a ClientInterface.");
 
-					System.out.println("Updating ChatMessage associated to a ClientInterface.");
-					
-					// the referenced message of the client has already been sent successfully,
-					// so find any messages proceeding it,
-					// send those messages in order to the client,
-					// and update the reference after each successful send.
-					// When all messages for a client have been sent, 
-					// iterate to the next client.
-					// If any message fails to send, the reference will remain intact 
-					// pointing to the last successfully sent message.
-					ChatMessage msg = aClient.getValue();
-					int index = messageList.indexOf( msg );
-					ClientInterface client = aClient.getKey();
+								// the referenced message of the client has already been sent successfully,
+								// so find any messages proceeding it,
+								// send those messages in order to the client,
+								// and update the reference after each successful send.
+								// When all messages for a client have been sent, 
+								// iterate to the next client.
+								// If any message fails to send, the reference will remain intact 
+								// pointing to the last successfully sent message.
+								ChatMessage msg = aClient.getValue();
+								int index = messageList.indexOf( msg );
+								ClientInterface client = aClient.getKey();
 
-					try{
-						while (index > 0) {
-							msg = messageList.get( --index );
-							client.replyToClientGUI( msg );
-							System.out.println("Replied to \"" + msg.message()+"\""); 
-							aClient.setValue( msg );
+								try{
+									while (index > 0) {
+										msg = messageList.get( --index );
+										client.replyToClientGUI( msg );
+										System.out.println("Replied to \"" + msg.message()+"\""); 
+										aClient.setValue( msg );
+									}
+
+								} catch(RemoteException e){
+									System.out.println("Client not responsive.  Could not send message \"" + msg.message() + "\" to client.");
+									// message failed -- do nothing.  Proceed to next client.
+
+									clientListStale.add(client);
+									System.out.println("Non-reponsive clients \"" + clientListStale.size() + "\".");
+
+								}
+
+							}
+						} catch(ConcurrentModificationException cme){
+							//Iterator failed.
+							System.out.println(cme.getLocalizedMessage());
 						}
-						
-					} catch(RemoteException e){
-						System.out.println("Client not responsive.  Could not send message \"" + msg.message() + "\" to client.");
-						// message failed -- do nothing.  Proceed to next client.
-						
-						clientListStale.add(client);
+						System.out.println("(Total clients "+ clientList.size() + ").");
 						System.out.println("Non-reponsive clients \"" + clientListStale.size() + "\".");
+						System.out.println("clientListStale.isStaleClients: "+ hasStaleClients() );
+
 					}
 				}
-				System.out.println("(Total clients "+ clientList.size() + ").");
 			}
-			updateWatermark();
+			//updateWatermark();
 			System.out.println("Messages in the List: " + messageList.size());
 	}
 
@@ -223,16 +238,19 @@ public class ChatServer extends UnicastRemoteObject
 		ChatMessage msg = new ChatMessage("moderator", "Welcome to the Chatroom " + client.getUsername() + "!");
 
 		if( !isRegistered(client) ){
-
 			// Send the welcome message to the newly-connected client
 			// and set the same welcome message as the client's 
-			clientList.put(client, msg);
-			messageList.add(0, msg);			
+			synchronized(clientList){
+				synchronized(messageList){
+					
+					clientList.put(client, msg);
+					messageList.add(0, msg);
+					
+					client.replyToClientGUI( msg );
+				}
+			}
+			System.out.println("Replied to \"" + msg.message()+"\"");
 			System.out.println("Registered client " + client.getUsername() +".");
-			
-			client.replyToClientGUI( msg );
-			System.out.println("Replied to \"" + msg.message()+"\""); 
-			
 		}
 		else{
 			System.out.println("Client already registered.");
@@ -247,6 +265,7 @@ public class ChatServer extends UnicastRemoteObject
 	public boolean isRegistered(ClientInterface client) throws RemoteException{
 		//return clientList.contains(client);
 		return clientList.containsKey(client);
+		
 
 	}
 
