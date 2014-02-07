@@ -102,6 +102,7 @@ public class ChatServer extends UnicastRemoteObject
 		removeStaleClients();
 		//messageList.add(new ChatMessage("","Welcome to ChatRoom"));
 		//_watermark = messageList.get(0);
+		// TEST COMMENT
 	}
 
 	public boolean hasStaleClients(){
