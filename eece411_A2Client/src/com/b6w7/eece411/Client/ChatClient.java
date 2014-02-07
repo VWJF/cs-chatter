@@ -10,6 +10,7 @@ import java.rmi.server.UnicastRemoteObject;
 
 import com.b6w7.eece411.ChatMessage;
 import com.b6w7.eece411.ClientInterface;
+import com.b6w7.eece411.PolicyFileLocator;
 import com.b6w7.eece411.ServerInterface;
 import com.matei.eece411.GUI.GUI;
 import com.matei.eece411.GUI.MessageQueue;
@@ -187,7 +188,14 @@ implements ClientInterface {
 		int userID =  (int) (Math.random() * 100);
 		username = "user" + Integer.toString( (int)userID );
 		
-		System.out.println ("HelloClient is starting.  "
+		System.setProperty("java.security.policy", PolicyFileLocator.getLocationOfPolicyFile());
+		System.out.println("policy file==" + System.getProperty("java.security.policy"));
+
+        if(System.getSecurityManager() == null) {
+            System.setSecurityManager(new SecurityManager());
+        }
+
+        System.out.println ("HelloClient is starting.  "
 				+"Looking for registry at " + address + " on port " + port);
 
 		// create a shared buffer where the GUI add the messages that need to 

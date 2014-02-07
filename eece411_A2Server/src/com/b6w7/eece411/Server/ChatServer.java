@@ -22,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.b6w7.eece411.ChatMessage;
 import com.b6w7.eece411.ClientInterface;
+import com.b6w7.eece411.PolicyFileLocator;
 import com.b6w7.eece411.ServerInterface;
 
 public class ChatServer extends UnicastRemoteObject
@@ -53,6 +54,13 @@ public class ChatServer extends UnicastRemoteObject
 			return;
 		}
 
+		System.setProperty("java.security.policy", PolicyFileLocator.getLocationOfPolicyFile());
+		System.out.println("policy file==" + System.getProperty("java.security.policy"));
+
+        if(System.getSecurityManager() == null) {
+            System.setSecurityManager(new SecurityManager());
+        }
+
 		try {
 			// validate registry information from command line parameters 
 			// validate host can be found and port is within range.
@@ -79,8 +87,7 @@ public class ChatServer extends UnicastRemoteObject
 
 		try {
 			Registry registry = LocateRegistry.getRegistry(registryAddress, registryPort);
-			Naming.rebind ("SHello", 
-					new ChatServer ("Hello!"));
+			registry.rebind ("SHello", new ChatServer ("Hello!"));
 			System.out.println ("ChatServer is ready.");
 		} catch (Exception e) {
 			System.out.println ("ChatServer failed: " + e);
@@ -133,7 +140,6 @@ public class ChatServer extends UnicastRemoteObject
 				}
 			}
 		};
-	
 		
 		timer.schedule(removeTaks, 10*1000, 5*1000);	
 	}
