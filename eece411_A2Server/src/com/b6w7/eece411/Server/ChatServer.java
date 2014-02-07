@@ -84,7 +84,6 @@ public class ChatServer extends UnicastRemoteObject
 			System.out.println ("ChatServer is ready.");
 		} catch (Exception e) {
 			System.out.println ("ChatServer failed: " + e);
-			e.printStackTrace();
 			return;
 		}
 	}
@@ -117,11 +116,11 @@ public class ChatServer extends UnicastRemoteObject
 			
 			@Override
 			public void run() { 
-				System.out.println("Stale Client Removal Thread started.");
-				synchronized(clientList){
-					synchronized(clientListStale){
-						System.out.println("Removing clients... " );
-						if(!clientListStale.isEmpty()){
+				if(!clientListStale.isEmpty()){
+					System.out.println("Stale Client Removal Thread started.");
+					synchronized(clientList){
+						synchronized(clientListStale){
+							System.out.println("Removing clients... " );
 							int clientListSIZE = clientList.keySet().size();
 							if( ChatServer.clientList.keySet().removeAll(ChatServer.clientListStale) ){
 								ChatServer.clientListStale.clear();
@@ -133,7 +132,6 @@ public class ChatServer extends UnicastRemoteObject
 						}
 					}
 				}
-
 			}
 		};
 	

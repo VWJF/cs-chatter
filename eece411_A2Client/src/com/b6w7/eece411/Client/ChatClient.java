@@ -70,7 +70,10 @@ implements ClientInterface {
 							registry = LocateRegistry.getRegistry(
 									ChatClient.registryAddress, 
 									ChatClient.registryPort);
-							UnicastRemoteObject.exportObject(client, 0);
+							try {
+								UnicastRemoteObject.exportObject(client, 0);
+							} catch (RemoteException e) {}
+							
 							server = (ServerInterface) 
 									registry.lookup ("SHello");
 							server.register( client );
@@ -81,7 +84,6 @@ implements ClientInterface {
 							return;
 							
 						} catch (RemoteException e) {
-							e.printStackTrace();
 							gui.addToTextArea("HelloClient failed to connect with server."
 									+"\nRetrying in " + (DELAY_TO_RECONNECT_MS/1000) + " seconds...");
 							System.out.println("HelloClient failed to connect with server."
@@ -91,7 +93,6 @@ implements ClientInterface {
 							// in the code we know that server ref is stale
 							server = null;
 						} catch ( NotBoundException nbe) {
-							nbe.printStackTrace();
 							gui.addToTextArea("HelloClient failed to connect with server."
 									+"\nRetrying in " + (DELAY_TO_RECONNECT_MS/1000) + " seconds...");
 							System.out.println("HelloClient failed to connect with server."
