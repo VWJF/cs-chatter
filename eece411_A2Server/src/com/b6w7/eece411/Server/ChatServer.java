@@ -87,7 +87,7 @@ public class ChatServer extends UnicastRemoteObject
 
 		try {
 			Registry registry = LocateRegistry.getRegistry(registryAddress, registryPort);
-			registry.rebind ("SHello", new ChatServer ("Hello!"));
+			Naming.rebind ("SHello", new ChatServer ("Hello!"));
 			System.out.println ("ChatServer is ready.");
 		} catch (Exception e) {
 			System.out.println ("ChatServer failed: " + e);
@@ -238,14 +238,25 @@ public class ChatServer extends UnicastRemoteObject
 			// and set the same welcome message as the client's 
 			synchronized(clientList){
 				synchronized(messageList){
-					
-					clientList.put(client, msg);
-					messageList.add(0, msg);
-					
-					client.replyToClientGUI( msg );
+					synchronized(clientListStale){
+
+						try{
+							clientList.put(client, msg);
+							messageList.add(0, msg);
+
+							client.replyToClientGUI( msg );
+
+						} catch(RemoteException e){
+							System.out.println("Client not responsive.  Could not send message \"" + msg.message() + "\" to client.");
+							// message failed -- do nothing.  Proceed to next client.
+
+							clientListStale.add(client);
+							System.out.println("Non-reponsive clients \"" + clientListStale.size() + "\".");
+						}
+					}
 				}
 			}
-			System.out.println("Replied to \"" + msg.message()+"\"");
+		System.out.println("Replied to \"" + msg.message()+"\"");
 			System.out.println("Registered client " + client.getUsername() +".");
 		}
 		else{
