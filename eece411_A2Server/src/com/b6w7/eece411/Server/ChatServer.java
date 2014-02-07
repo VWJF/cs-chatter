@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.b6w7.eece411.ChatMessage;
@@ -92,14 +94,12 @@ public class ChatServer extends UnicastRemoteObject
 	//private List<ClientStructure> clientList;
 	private static Map<ClientInterface, ChatMessage> clientList;
 	private static Set<ClientInterface> clientListStale;
-	private Thread _ChatServerThread;
 	
 	public ChatServer(String user) throws RemoteException{
 		messageList = Collections.synchronizedList(new LinkedList<ChatMessage>());
 		clientList = Collections.synchronizedMap(new ConcurrentHashMap<ClientInterface, ChatMessage>());
 		clientListStale = Collections.synchronizedSet(new HashSet<ClientInterface>());
-		
-		_ChatServerThread = Thread.currentThread(); 
+		 
 		removeStaleClients();
 		//messageList.add(new ChatMessage("","Welcome to ChatRoom"));
 		//_watermark = messageList.get(0);
@@ -112,40 +112,33 @@ public class ChatServer extends UnicastRemoteObject
 	}
 	
 	private void removeStaleClients(){
-		Thread removal = new Thread(new Runnable() {
-
+		Timer timer = new Timer(true);
+		TimerTask removeTaks = new TimerTask() {
+			
 			@Override
 			public void run() { 
 				System.out.println("Stale Client Removal Thread started.");
-				while(_ChatServerThread.isAlive()){
-					try {
-						//5 second sleep (1*1000millisec)
-						Thread.sleep(5*1000);
-						
-					} catch (InterruptedException e) {
-						System.out.println(e.getLocalizedMessage());
-						e.printStackTrace();
-					}
-					
-					synchronized(clientList){
-						synchronized(clientListStale){
-							if(!clientListStale.isEmpty()){
-								int clientListSIZE = clientList.keySet().size();
-								if( ChatServer.clientList.keySet().removeAll(ChatServer.clientListStale) ){
-									ChatServer.clientListStale.clear();
-									int newSIZE = clientListSIZE - clientList.keySet().size();
-									System.out.println("Removed non-responsive clients: " + newSIZE );
-								}
-								else
-									System.out.println("Non-responsive clients not removed.");
+				synchronized(clientList){
+					synchronized(clientListStale){
+						System.out.println("Removing clients... " );
+						if(!clientListStale.isEmpty()){
+							int clientListSIZE = clientList.keySet().size();
+							if( ChatServer.clientList.keySet().removeAll(ChatServer.clientListStale) ){
+								ChatServer.clientListStale.clear();
+								int newSIZE = clientListSIZE - clientList.keySet().size();
+								System.out.println("Removed non-responsive clients: " + newSIZE );
 							}
+							else
+								System.out.println("Non-responsive clients not removed.");
 						}
 					}
 				}
+
 			}
-		});
+		};
+	
 		
-		removal.start();	
+		timer.schedule(removeTaks, 10*1000, 5*1000);	
 	}
 	
 	
